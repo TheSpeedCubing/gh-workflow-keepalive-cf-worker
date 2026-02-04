@@ -3,13 +3,25 @@ export default {
 	  
 	// github token
     const GITHUB_TOKEN = env.GITHUB_TOKEN;
-    if (!GITHUB_TOKEN) return;
+    if (!GITHUB_TOKEN) {
+      console.error("[ERROR] Missing GITHUB_TOKEN");
+      return;
+    }
 
     // config.json
     const configJson = await env.GH_WORKFLOW_KEEPALIVE.get("config.json");
-    if (!configJson) return;
+    if (!configJson) {
+      console.error("[ERROR] Missing configJson");
+      return;
+    }
 
-    const { orgs = [], users = [] } = JSON.parse(configJson);
+    let orgs = [], users = [];
+    try {
+      ({ orgs = [], users = [] } = JSON.parse(configJson));
+    } catch (e) {
+      console.error("[ERROR] Invalid JSON config", e);
+      return;
+    }
 
     const repoFetchers = [
       ...orgs.map(org => ({
@@ -53,6 +65,8 @@ export default {
 
 async function processRepos(repos, GITHUB_TOKEN) {
   for (const repo of repos) {
+    console.log(`[REPO] ${repo.full_name}`);
+	
     const workflowsRes = await fetch(
       `https://api.github.com/repos/${repo.full_name}/actions/workflows`,
       {
@@ -64,11 +78,16 @@ async function processRepos(repos, GITHUB_TOKEN) {
       }
     );
 
-    if (!workflowsRes.ok) continue;
+    if (!workflowsRes.ok) {
+      console.error(`[ERROR] Workflows fetch failed ${repo.full_name} status=${workflowsRes.status}`);
+      continue;
+    }
 
     const { workflows = [] } = await workflowsRes.json();
 
     for (const wf of workflows) {
+      console.log(`[WF] Enabling "${wf.name}" (${wf.id})`);
+
       const res = await fetch(
         `https://api.github.com/repos/${repo.full_name}/actions/workflows/${wf.id}/enable`,
         {
@@ -80,6 +99,15 @@ async function processRepos(repos, GITHUB_TOKEN) {
           },
         }
       );
+      
+	  const text = await res.text();
+      if (res.status === 204) {
+        console.log(`[OK] Enabled "${wf.name}" in ${repo.full_name}`);
+      } else {
+        console.error(
+          `[FAIL] Enable "${wf.name}" in ${repo.full_name} status=${res.status} body=${text}`
+        );
+      }
     }
   }
 }
