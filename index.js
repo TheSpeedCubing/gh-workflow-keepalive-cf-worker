@@ -1,27 +1,25 @@
-import yaml from 'js-yaml';
-
 export default {
   async scheduled(event, env, ctx) {
     console.log("Worker triggered by cron:", event.cron);
 
-    // Get workflows.yml from KV
-    const workflowsYml = await env.SCHEDULE_WORKFLOWS.get("workflows.yml");
-    if (!workflowsYml) {
-      console.error("workflows.yml not found in KV!");
+    // Get workflows.json from KV
+    const workflowsJson = await env.SCHEDULE_WORKFLOWS.get("workflows.json");
+    if (!workflowsJson) {
+      console.error("workflows.json not found in KV!");
       return;
     }
 
     let config;
     try {
-      config = yaml.load(workflowsYml);
+      config = JSON.parse(workflowsJson);
     } catch (e) {
-      console.error("Failed to parse YAML:", e);
+      console.error("Failed to parse JSON:", e);
       return;
     }
 
     const repos = Object.keys(config.repos || {});
     if (!repos.length) {
-      console.log("No repositories found in workflows.yml");
+      console.log("No repositories found in workflows.json");
       return;
     }
 
