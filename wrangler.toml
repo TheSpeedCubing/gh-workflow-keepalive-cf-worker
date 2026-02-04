@@ -1,0 +1,11 @@
+name = "gh-workflow-keepalive"
+main = "index.js"
+type = "javascript"
+
+[[kv_namespaces]]
+binding = "SCHEDULE_WORKFLOWS"
+id = "72ed60d4e26b455194b5cf1da0263e98"
+
+# Cron trigger: every day at 00:00 UTC
+[triggers]
+crons = ["0 0 * * *"]
