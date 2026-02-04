@@ -6,7 +6,7 @@ export default {
     if (!GITHUB_TOKEN) return;
 
     // config.json
-    const configJson = await env.SCHEDULE_WORKFLOWS.get("config.json");
+    const configJson = await env.GH_WORKFLOW_KEEPALIVE.get("config.json");
     if (!configJson) return;
 
     const { orgs = [], users = [] } = JSON.parse(configJson);

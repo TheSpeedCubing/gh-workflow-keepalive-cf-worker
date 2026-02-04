@@ -3,8 +3,8 @@ main = "index.js"
 compatibility_date = "2026-02-04"
 
 [[kv_namespaces]]
-binding = "SCHEDULE_WORKFLOWS"
-id = "72ed60d4e26b455194b5cf1da0263e98"
+binding = "GH_WORKFLOW_KEEPALIVE"
+id = "b2da6d224da74300b39b24330eb49800"
 
 # Cron trigger: every day at 00:00 UTC
 [triggers]
