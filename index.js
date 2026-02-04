@@ -2,7 +2,6 @@ export default {
   async scheduled(event, env, ctx) {
     console.log("Worker triggered by cron:", event.cron);
 
-    // Get workflows.json from KV
     const workflowsJson = await env.SCHEDULE_WORKFLOWS.get("workflows.json");
     if (!workflowsJson) {
       console.error("workflows.json not found in KV!");
@@ -40,7 +39,8 @@ export default {
               method: 'PUT',
               headers: {
                 "Authorization": `Bearer ${GITHUB_TOKEN}`,
-                "Accept": "application/vnd.github+json"
+                "Accept": "application/vnd.github+json",
+				"User-Agent": "github.com/TheSpeedcubing/gh-workflow-keepalive"
               }
             }
           );

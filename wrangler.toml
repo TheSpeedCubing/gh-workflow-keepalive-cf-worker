@@ -9,3 +9,18 @@ id = "72ed60d4e26b455194b5cf1da0263e98"
 # Cron trigger: every day at 00:00 UTC
 [triggers]
 crons = ["0 0 * * *"]
+
+[observability]
+enabled = false
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = false
+persist = true
+head_sampling_rate = 1
