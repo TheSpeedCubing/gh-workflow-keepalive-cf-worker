@@ -1,59 +1,85 @@
 export default {
   async scheduled(event, env, ctx) {
-    console.log("Worker triggered by cron:", event.cron);
-
-    const workflowsJson = await env.SCHEDULE_WORKFLOWS.get("workflows.json");
-    if (!workflowsJson) {
-      console.error("workflows.json not found in KV!");
-      return;
-    }
-
-    let config;
-    try {
-      config = JSON.parse(workflowsJson);
-    } catch (e) {
-      console.error("Failed to parse JSON:", e);
-      return;
-    }
-
-    const repos = Object.keys(config.repos || {});
-    if (!repos.length) {
-      console.log("No repositories found in workflows.json");
-      return;
-    }
-
+	  
+	// github token
     const GITHUB_TOKEN = env.GITHUB_TOKEN;
-    if (!GITHUB_TOKEN) {
-      console.error("GITHUB_TOKEN not set in Worker secrets");
-      return;
-    }
+    if (!GITHUB_TOKEN) return;
 
-    for (const repo of repos) {
-      const workflows = config.repos[repo];
-      for (const wf of workflows) {
-        console.log(`Enabling workflow ${wf} in repository ${repo}...`);
-        try {
-          const response = await fetch(
-            `https://api.github.com/repos/${repo}/actions/workflows/${wf}/enable`,
-            {
-              method: 'PUT',
-              headers: {
-                "Authorization": `Bearer ${GITHUB_TOKEN}`,
-                "Accept": "application/vnd.github+json",
-				"User-Agent": "github.com/TheSpeedcubing/gh-workflow-keepalive"
-              }
-            }
-          );
+    // config.json
+    const configJson = await env.SCHEDULE_WORKFLOWS.get("config.json");
+    if (!configJson) return;
 
-          if (response.status === 204) {
-            console.log(`Success: ${wf} enabled in ${repo}`);
-          } else {
-            console.error(`Failed: ${wf} in ${repo}, HTTP code ${response.status}`);
-          }
-        } catch (err) {
-          console.error(`Error enabling ${wf} in ${repo}:`, err);
-        }
+    const { orgs = [], users = [] } = JSON.parse(configJson);
+
+    const repoFetchers = [
+      ...orgs.map(org => ({
+        name: `org:${org}`,
+        url: page => `https://api.github.com/orgs/${org}/repos?type=all&per_page=100&page=${page}`
+      })),
+      ...users.map(user => ({
+        name: `user:${user}`,
+        url: page => `https://api.github.com/users/${user}/repos?type=all&per_page=100&page=${page}`
+      }))
+    ];
+
+    // iterate all orgs and users
+    for (const src of repoFetchers) {
+      let page = 1;
+      let repos = [];
+
+      // fetch all repos 
+      while (true) {
+        const res = await fetch(src.url(page), {
+          headers: {
+            Authorization: `Bearer ${GITHUB_TOKEN}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": "gh-workflow-keepalive",
+          },
+        });
+
+        if (!res.ok) break;
+
+        const data = await res.json();
+        if (!data.length) break;
+
+        repos.push(...data);
+        page++;
       }
+
+      await processRepos(repos, GITHUB_TOKEN);
+    }
+  },
+};
+
+async function processRepos(repos, GITHUB_TOKEN) {
+  for (const repo of repos) {
+    const workflowsRes = await fetch(
+      `https://api.github.com/repos/${repo.full_name}/actions/workflows`,
+      {
+        headers: {
+          Authorization: `Bearer ${GITHUB_TOKEN}`,
+          Accept: "application/vnd.github+json",
+          "User-Agent": "gh-workflow-keepalive",
+        },
+      }
+    );
+
+    if (!workflowsRes.ok) continue;
+
+    const { workflows = [] } = await workflowsRes.json();
+
+    for (const wf of workflows) {
+      const res = await fetch(
+        `https://api.github.com/repos/${repo.full_name}/actions/workflows/${wf.id}/enable`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${GITHUB_TOKEN}`,
+            Accept: "application/vnd.github+json",
+            "User-Agent": "gh-workflow-keepalive",
+          },
+        }
+      );
     }
   }
-};
+}
