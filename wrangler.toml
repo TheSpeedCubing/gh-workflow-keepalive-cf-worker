@@ -1,6 +1,6 @@
 name = "gh-workflow-keepalive"
 main = "index.js"
-type = "javascript"
+compatibility_date = "2026-02-04"
 
 [[kv_namespaces]]
 binding = "SCHEDULE_WORKFLOWS"
